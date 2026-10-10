@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useTransition } from "react";
 import Link from "next/link";
 import { ClientDecision, SpinResult } from "@/lib/types";
-import { MysteryWheel } from "./MysteryWheel";
+import { MysteryWheel, FLAT_SLICE_COLORS } from "./MysteryWheel";
 
 interface DecisionClientViewProps {
   initialDecision: ClientDecision;
@@ -17,21 +17,8 @@ export const DecisionClientView: React.FC<DecisionClientViewProps> = ({
   const [decision, setDecision] = useState<ClientDecision>(initialDecision);
   const [isCreator, setIsCreator] = useState(isCreatorParam || Boolean(initialDecision.isCreator));
   const [copyToast, setCopyToast] = useState(false);
-  const [formattedSpunDate, setFormattedSpunDate] = useState<string>("");
+  const [creatorWantSpin, setCreatorWantSpin] = useState(false);
   const [, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (decision.spun_at) {
-      setFormattedSpunDate(
-        new Date(decision.spun_at).toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
-    }
-  }, [decision.spun_at]);
 
   // Check localStorage for creator token if not already verified
   useEffect(() => {
@@ -45,7 +32,7 @@ export const DecisionClientView: React.FC<DecisionClientViewProps> = ({
 
   // If creator and wheel has not spun yet, live-poll for when friend spins
   useEffect(() => {
-    if (decision.spun) return; // already finished
+    if (decision.spun) return;
 
     const pollInterval = setInterval(async () => {
       try {
@@ -63,7 +50,7 @@ export const DecisionClientView: React.FC<DecisionClientViewProps> = ({
       } catch {
         // network retry
       }
-    }, 3500);
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [decision.id, decision.spun]);
@@ -87,7 +74,6 @@ export const DecisionClientView: React.FC<DecisionClientViewProps> = ({
 
       const result: SpinResult = await res.json();
 
-      // Update state
       setDecision((prev) => ({
         ...prev,
         spun: true,
@@ -110,7 +96,7 @@ export const DecisionClientView: React.FC<DecisionClientViewProps> = ({
     }
   }, [decision.id]);
 
-  // Share handlers
+  // Clean Share URL (without creator parameter)
   const getShareUrl = () => {
     if (typeof window !== "undefined") {
       return `${window.location.origin}/d/${decision.id}`;
@@ -119,13 +105,13 @@ export const DecisionClientView: React.FC<DecisionClientViewProps> = ({
   };
 
   const getShareText = () => {
-    return `🔮 Help me decide: "${decision.title}"!\nSpin the anonymous Mystery Wheel to reveal our fate: ${getShareUrl()}`;
+    return `🔮 Help me decide: "${decision.title}"!\nSpin the mystery wheel to choose our fate: ${getShareUrl()}`;
   };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(getShareUrl());
     setCopyToast(true);
-    setTimeout(() => setCopyToast(false), 2500);
+    setTimeout(() => setCopyToast(false), 2200);
   };
 
   const handleWhatsAppShare = () => {
@@ -134,174 +120,198 @@ export const DecisionClientView: React.FC<DecisionClientViewProps> = ({
     window.open(waUrl, "_blank");
   };
 
-  const handleNativeShare = async () => {
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title: `🔮 ${decision.title}`,
-          text: getShareText(),
-          url: getShareUrl(),
-        });
-      } catch {
-        handleCopyLink();
-      }
-    } else {
-      handleCopyLink();
-    }
-  };
-
   return (
-    <div className="decision-page-container">
+    <div className="mobile-shell">
       {/* Toast Notification */}
       {copyToast && (
-        <div className="toast-notification animate-bounce-in" role="alert">
-          <span>✓ Share link copied to clipboard!</span>
+        <div className="toast-pill" role="alert">
+          ✓ Copied link to clipboard!
         </div>
       )}
 
-      {/* Creator Banner */}
-      {isCreator && (
-        <div className="creator-banner animate-fade-in">
-          <div className="creator-banner-left">
-            <span className="creator-badge-icon">👑</span>
-            <div>
-              <p className="creator-banner-title">Creator Mode</p>
-              <p className="creator-banner-desc">
-                {decision.spun
-                  ? "Your friend has spun the wheel! Check the winning outcome below."
-                  : "Waiting for your friend to open the link and spin the wheel..."}
-              </p>
-            </div>
-          </div>
-          {!decision.spun && (
-            <div className="live-poll-indicator" title="Live checking for spins">
-              <span className="pulsing-radar-dot" />
-              <span>Listening Live</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Header Info */}
-      <div className="decision-header-card">
-        <div className="decision-tag-row">
-          <span className="badge-tag mystery-tag">
-            🔮 Mystery Decider
+      {/* Brand Header */}
+      <div className="top-brand-row">
+        <Link href="/" className="brand-link">
+          <span className="brand-wheel-circle">
+            <span className="dot-slice d1" />
+            <span className="dot-slice d2" />
+            <span className="dot-slice d3" />
+            <span className="dot-slice d4" />
           </span>
-          <span className="badge-tag count-tag">
-            {decision.optionCount} Hidden Choices
-          </span>
-          {decision.spun && (
-            <span className="badge-tag locked-tag">
-              🔒 Locked
-            </span>
-          )}
-        </div>
-
-        <h1 className="decision-title-main">{decision.title}</h1>
-
-        <p className="decision-instructions">
-          {!decision.spun ? (
-            <span>
-              Options remain <strong>anonymous</strong> on the wheel until spun. Tap the button below to discover your fate!
-            </span>
-          ) : (
-            <span>
-              This decision is final.{formattedSpunDate ? ` Spun on ${formattedSpunDate}.` : ""}
-            </span>
-          )}
-        </p>
-      </div>
-
-      {/* Mobile-optimized Action Bar for WhatsApp / Sharing */}
-      <div className="share-bar-container">
-        <button
-          type="button"
-          onClick={handleWhatsAppShare}
-          className="btn-share-whatsapp"
-          aria-label="Share via WhatsApp"
-        >
-          <span className="wa-icon">💬</span>
-          <span>Share via WhatsApp</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleNativeShare}
-          className="btn-share-native"
-          aria-label="Share Link"
-        >
-          <span>🔗</span>
-          <span>Share / Copy</span>
-        </button>
-      </div>
-
-      {/* The Mystery Wheel */}
-      <div className="wheel-centerpiece">
-        <MysteryWheel
-          optionCount={decision.optionCount}
-          options={decision.options}
-          winnerIndex={decision.winner_index}
-          winnerChoice={decision.winner_choice}
-          isSpun={decision.spun}
-          onSpinRequest={decision.spun ? undefined : handleSpinRequest}
-        />
-      </div>
-
-      {/* Mystery Guarantee Notice (BEFORE SPIN) */}
-      {!decision.spun && (
-        <div className="mystery-lock-info-card animate-fade-in">
-          <div className="flex-center gap-2 mb-1">
-            <span className="mystery-lock-icon">🔒</span>
-            <span className="font-bold text-white text-sm">Mystery Mode Active</span>
-          </div>
-          <p className="text-xs text-secondary text-center">
-            All {decision.optionCount} choices are locked on the server. Slices remain anonymous (?) until the wheel is spun!
-          </p>
-        </div>
-      )}
-
-      {/* Revealed Options Breakdown Card (ONLY AFTER SPIN) */}
-      {decision.spun && decision.options && decision.options.length > 0 && (
-        <div className="revealed-options-card animate-fade-in">
-          <div className="revealed-header">
-            <h2 className="revealed-title">Revealed Choices</h2>
-            <span className="revealed-subtitle">
-              The curtain has been lifted! Here were all the options:
-            </span>
-          </div>
-
-          <div className="revealed-grid">
-            {decision.options.map((opt, idx) => {
-              const isWinner = decision.winner_index === idx;
-              return (
-                <div
-                  key={idx}
-                  className={`revealed-option-item ${isWinner ? "is-winner-item" : ""}`}
-                >
-                  <div className="option-item-left">
-                    <span className="option-num-badge">#{idx + 1}</span>
-                    <span className="option-item-text">{opt}</span>
-                  </div>
-                  {isWinner && (
-                    <span className="winner-chip">
-                      ★ WINNER
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Footer Navigation */}
-      <div className="decision-footer-nav">
-        <Link href="/" className="btn-create-new">
-          <span>🎡</span>
-          <span>Create a New Mystery Wheel</span>
+          <span className="brand-text">Mystery Spin</span>
         </Link>
       </div>
+
+      {/* Main Question Title */}
+      <h1 className="question-title">{decision.title}</h1>
+
+      {/* ================================================================= */}
+      {/* CASE 1: UNSPUN CREATOR VIEW (Matches Reference Image 3)           */}
+      {/* ================================================================= */}
+      {isCreator && !decision.spun && !creatorWantSpin ? (
+        <div className="creator-flow-container">
+          {/* Waiting Pill */}
+          <div className="waiting-pill">
+            <span className="status-yellow-dot" />
+            <span>Waiting for your friend to spin</span>
+          </div>
+
+          {/* White Card: Send link to your friend */}
+          <div className="share-white-card">
+            <h2 className="share-card-title">Send this link to your friend</h2>
+            <p className="share-card-sub">
+              They see the title and a wheel. The choices stay hidden until they spin.
+            </p>
+
+            <div className="share-input-wrapper">
+              <input
+                type="text"
+                readOnly
+                value={getShareUrl()}
+                className="share-link-input"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleWhatsAppShare}
+              className="btn-whatsapp-flat"
+            >
+              Send on WhatsApp
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="btn-copy-flat"
+            >
+              Copy link
+            </button>
+
+            <div className="share-card-footer">
+              <span className="footer-dim-text">Check the result from another device</span>
+            </div>
+          </div>
+
+          {/* Creator Choices Section (if available) */}
+          {decision.options && decision.options.length > 0 && (
+            <div className="choices-list-section">
+              <h3 className="choices-section-title">Your choices</h3>
+              <div className="choices-stack">
+                {decision.options.map((opt, idx) => (
+                  <div key={idx} className="choice-pill-item">
+                    <span
+                      className="choice-color-dot"
+                      style={{
+                        backgroundColor:
+                          FLAT_SLICE_COLORS[idx % FLAT_SLICE_COLORS.length],
+                      }}
+                    />
+                    <span className="choice-pill-text">{opt}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Option for creator to spin it themselves */}
+          <div className="creator-self-spin-section">
+            <button
+              type="button"
+              onClick={() => setCreatorWantSpin(true)}
+              className="link-self-spin"
+            >
+              Spin it yourself instead
+            </button>
+            <p className="self-spin-sub">
+              There&apos;s only one spin. If you use it, your friend sees the same result.
+            </p>
+
+            <Link href="/" className="btn-make-another">
+              Make another spin
+            </Link>
+          </div>
+        </div>
+      ) : (
+        /* ================================================================= */
+        /* CASE 2: WHEEL VIEW (Friend Unspun OR Spun Result)                */
+        /* ================================================================= */
+        <div className="wheel-flow-container">
+          {/* Subtitle if unspun (Matches Reference Image 4) */}
+          {!decision.spun && (
+            <p className="unspun-subtitle">
+              {decision.optionCount} choices are hidden. Spin to see which one gets picked.
+            </p>
+          )}
+
+          {/* The Flat Mystery Wheel */}
+          <div className="wheel-center-wrap">
+            <MysteryWheel
+              optionCount={decision.optionCount}
+              options={decision.options}
+              winnerIndex={decision.winner_index}
+              winnerChoice={decision.winner_choice}
+              isSpun={decision.spun}
+              onSpinRequest={decision.spun ? undefined : handleSpinRequest}
+            />
+          </div>
+
+          {/* =============================================================== */}
+          {/* SPUN OUTCOME SECTION (Matches Reference Images 1 & 2)           */}
+          {/* =============================================================== */}
+          {decision.spun && decision.winner_choice && (
+            <div className="result-announcement-section">
+              <div className="result-header">
+                <span className="result-label">The wheel picked</span>
+                <h2 className="result-winner-text">{decision.winner_choice}</h2>
+                <span className="result-time-text">Spun just now</span>
+              </div>
+
+              {/* All the choices list */}
+              {decision.options && decision.options.length > 0 && (
+                <div className="choices-list-section">
+                  <h3 className="choices-section-title">All the choices</h3>
+                  <div className="choices-stack">
+                    {decision.options.map((opt, idx) => {
+                      const isPicked = decision.winner_index === idx;
+                      return (
+                        <div
+                          key={idx}
+                          className={`choice-pill-item ${isPicked ? "is-picked-pill" : ""}`}
+                        >
+                          <div className="choice-pill-left">
+                            <span
+                              className="choice-color-dot"
+                              style={{
+                                backgroundColor: isPicked
+                                  ? "#111111"
+                                  : FLAT_SLICE_COLORS[idx % FLAT_SLICE_COLORS.length],
+                              }}
+                            />
+                            <span className="choice-pill-text">{opt}</span>
+                          </div>
+
+                          {isPicked && (
+                            <span className="picked-badge">Picked</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Make Your Own Spin Button */}
+              <div className="make-own-spin-container">
+                <Link href="/" className="btn-make-own-spin">
+                  Make your own spin
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

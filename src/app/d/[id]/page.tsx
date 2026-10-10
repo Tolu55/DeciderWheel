@@ -60,15 +60,13 @@ export default async function DecisionPage({ params, searchParams }: PageProps) 
     optionCount: decision.options.length,
     created_at: decision.created_at,
     isCreator: isCreatorParam,
-    ...(decision.spun ? { options: decision.options } : {}),
+    ...(decision.spun || isCreatorParam ? { options: decision.options } : {}),
   };
 
   return (
-    <main className="main-content">
-      <DecisionClientView
-        initialDecision={clientData}
-        isCreatorParam={isCreatorParam}
-      />
-    </main>
+    <DecisionClientView
+      initialDecision={clientData}
+      isCreatorParam={isCreatorParam}
+    />
   );
 }

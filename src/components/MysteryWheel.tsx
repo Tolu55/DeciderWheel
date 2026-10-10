@@ -6,7 +6,7 @@ import { sounds } from "@/lib/sound";
 
 interface MysteryWheelProps {
   optionCount: number;
-  options?: string[]; // Defined only if revealed
+  options?: string[];
   winnerIndex?: number | null;
   winnerChoice?: string | null;
   isSpun: boolean;
@@ -14,20 +14,20 @@ interface MysteryWheelProps {
   disabled?: boolean;
 }
 
-// Curated high-contrast mystery jewel palette
-const SLICE_PALETTE = [
-  { bg: "#7c3aed", accent: "#a78bfa", dark: "#5b21b6", border: "#c4b5fd" }, // Royal Violet
-  { bg: "#06b6d4", accent: "#38bdf8", dark: "#0891b2", border: "#67e8f9" }, // Electric Cyan
-  { bg: "#f43f5e", accent: "#fb7185", dark: "#e11d48", border: "#fda4af" }, // Hot Coral Pink
-  { bg: "#f59e0b", accent: "#fbbf24", dark: "#d97706", border: "#fde68a" }, // Sunset Gold
-  { bg: "#10b981", accent: "#34d399", dark: "#059669", border: "#6ee7b7" }, // Emerald Neon
-  { bg: "#6366f1", accent: "#818cf8", dark: "#4f46e5", border: "#a5b4fc" }, // Cosmic Indigo
-  { bg: "#f97316", accent: "#fb923c", dark: "#ea580c", border: "#fed7aa" }, // Flame Orange
-  { bg: "#3b82f6", accent: "#60a5fa", dark: "#2563eb", border: "#93c5fd" }, // Deep Sapphire
-  { bg: "#ec4899", accent: "#f472b6", dark: "#db2777", border: "#fbcfe8" }, // Neon Fuchsia
-  { bg: "#14b8a6", accent: "#2dd4bf", dark: "#0d9488", border: "#99f6e4" }, // Mystic Teal
-  { bg: "#8b5cf6", accent: "#c084fc", dark: "#7c3aed", border: "#ddd6fe" }, // Dark Orchid
-  { bg: "#84cc16", accent: "#a3e635", dark: "#65a30d", border: "#bef264" }, // Cyber Lime
+// Flat, vibrant slice colors matching the reference design (NO GRADIENTS)
+export const FLAT_SLICE_COLORS = [
+  "#ffcc00", // Bright Yellow
+  "#ff6b18", // Vibrant Orange
+  "#ff4785", // Punchy Pink
+  "#00c49f", // Teal / Mint
+  "#a855f7", // Vivid Purple
+  "#65d400", // Lime Green
+  "#3b82f6", // Sky Blue
+  "#ef4444", // Coral Red
+  "#c084fc", // Lavender
+  "#ff8a65", // Warm Coral
+  "#38bdf8", // Cyan
+  "#34d399", // Emerald
 ];
 
 export const MysteryWheel: React.FC<MysteryWheelProps> = ({
@@ -51,7 +51,6 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
       ? { index: winnerIndex, choice: winnerChoice }
       : null
   );
-  const [soundMuted, setSoundMuted] = useState(false);
 
   // Wheel state refs
   const rotationRef = useRef<number>(0);
@@ -59,30 +58,16 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
   const lastPegCrossedRef = useRef<number>(-1);
   const pointerDeflectionRef = useRef<number>(0);
 
-  // ONLY sync options if ALREADY SPUN or REVEALED
   useEffect(() => {
     if (isSpun && options && options.length > 0) {
       setCurrentOptions(options);
     }
   }, [isSpun, options]);
 
-  useEffect(() => {
-    setSoundMuted(sounds.isMuted());
-  }, []);
-
-  const toggleSound = () => {
-    const nextMute = !soundMuted;
-    sounds.setMuted(nextMute);
-    setSoundMuted(nextMute);
-  };
-
   const totalSlices = Math.max(2, currentOptions ? currentOptions.length : optionCount);
   const sliceAngle = (2 * Math.PI) / totalSlices;
 
-  // STRICT REVEAL CHECK: Options are NEVER shown until wheel is spun!
-  const isRevealed = Boolean(isSpun || revealedWinner !== null);
-
-  // Draw the high-end Mystery Wheel
+  // Draw wheel on canvas matching the reference design (Clean, Flat, No Gradients)
   const drawWheel = useCallback(
     (rotation: number) => {
       const canvas = canvasRef.current;
@@ -92,74 +77,12 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
 
       const size = canvas.width;
       const center = size / 2;
-      const outerBezelRadius = center - 8;
-      const bezelWidth = 26;
-      const sliceRadius = outerBezelRadius - bezelWidth;
+      const wheelRadius = center - 14;
 
       ctx.clearRect(0, 0, size, size);
 
       // ==========================================
-      // 1. OUTER CHROME & GLOW BEZEL
-      // ==========================================
-      // Bezel base
-      ctx.beginPath();
-      ctx.arc(center, center, outerBezelRadius, 0, Math.PI * 2);
-      const bezelGrad = ctx.createRadialGradient(
-        center,
-        center,
-        sliceRadius,
-        center,
-        center,
-        outerBezelRadius
-      );
-      bezelGrad.addColorStop(0, "#1e1b4b");
-      bezelGrad.addColorStop(0.5, "#0f172a");
-      bezelGrad.addColorStop(0.85, "#2e1065");
-      bezelGrad.addColorStop(1, "#090913");
-      ctx.fillStyle = bezelGrad;
-      ctx.shadowColor = "rgba(168, 85, 247, 0.4)";
-      ctx.shadowBlur = 25;
-      ctx.fill();
-
-      // Outer golden metallic rim
-      ctx.beginPath();
-      ctx.arc(center, center, outerBezelRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(251, 191, 36, 0.45)";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // Inner rim divider
-      ctx.beginPath();
-      ctx.arc(center, center, sliceRadius + 1, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      // Perimeter LED Bulbs (Arcade marquee lights)
-      const totalBulbs = Math.max(16, totalSlices * 2);
-      const bulbRadius = outerBezelRadius - bezelWidth / 2;
-      for (let b = 0; b < totalBulbs; b++) {
-        const bAngle = (b / totalBulbs) * Math.PI * 2 + (isSpinning ? rotation * 0.4 : 0);
-        const bx = center + Math.cos(bAngle) * bulbRadius;
-        const by = center + Math.sin(bAngle) * bulbRadius;
-
-        ctx.beginPath();
-        ctx.arc(bx, by, 3.8, 0, Math.PI * 2);
-        const isGoldBulb = b % 2 === 0;
-        ctx.fillStyle = isGoldBulb ? "#fde047" : "#38bdf8";
-        ctx.shadowColor = isGoldBulb ? "rgba(253, 224, 71, 0.9)" : "rgba(56, 189, 248, 0.9)";
-        ctx.shadowBlur = 8;
-        ctx.fill();
-
-        // Bulb glass specular
-        ctx.beginPath();
-        ctx.arc(bx - 1, by - 1, 1.2, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fill();
-      }
-
-      // ==========================================
-      // 2. ROTATING SLICE SEGMENTS
+      // 1. ROTATING SLICE SEGMENTS (NO GRADIENTS)
       // ==========================================
       ctx.save();
       ctx.translate(center, center);
@@ -168,214 +91,61 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
       for (let i = 0; i < totalSlices; i++) {
         const startAngle = i * sliceAngle;
         const endAngle = startAngle + sliceAngle;
-        const color = SLICE_PALETTE[i % SLICE_PALETTE.length];
-        const isWinnerSlice = isRevealed && revealedWinner !== null && revealedWinner.index === i;
+        const color = FLAT_SLICE_COLORS[i % FLAT_SLICE_COLORS.length];
 
-        // Slice wedge path
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.arc(0, 0, sliceRadius, startAngle, endAngle);
+        ctx.arc(0, 0, wheelRadius, startAngle, endAngle);
         ctx.closePath();
 
-        // Fill wedge with 3D gradient
-        const grad = ctx.createRadialGradient(0, 0, 15, 0, 0, sliceRadius);
-        if (isWinnerSlice) {
-          grad.addColorStop(0, "#fde68a");
-          grad.addColorStop(0.35, "#f59e0b");
-          grad.addColorStop(1, "#b45309");
-        } else {
-          grad.addColorStop(0, color.accent);
-          grad.addColorStop(0.5, color.bg);
-          grad.addColorStop(1, color.dark);
-        }
-        ctx.fillStyle = grad;
-        ctx.shadowBlur = 0;
+        // Flat solid color fill (Strictly NO gradient!)
+        ctx.fillStyle = color;
         ctx.fill();
 
-        // Slice border divider
-        ctx.strokeStyle = isWinnerSlice ? "rgba(255, 255, 255, 0.85)" : "rgba(255, 255, 255, 0.35)";
-        ctx.lineWidth = 2.5;
+        // White slice divider border
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 3.5;
         ctx.stroke();
-
-        // ==========================================
-        // 3. SLICE CONTENT: MYSTERY vs REVEALED
-        // ==========================================
-        ctx.save();
-        ctx.rotate(startAngle + sliceAngle / 2);
-
-        if (!isRevealed) {
-          // ----------------------------------------
-          // MYSTERY MODE: Anonymous '?' Glowing Token
-          // ----------------------------------------
-          const tokenDist = sliceRadius * 0.62;
-          const tokenR = Math.max(20, Math.min(27, (sliceAngle * tokenDist) / 2.3));
-
-          // Circular Mystic Token Base
-          ctx.beginPath();
-          ctx.arc(tokenDist, 0, tokenR, 0, Math.PI * 2);
-          const tokenGrad = ctx.createRadialGradient(tokenDist, 0, 2, tokenDist, 0, tokenR);
-          tokenGrad.addColorStop(0, "rgba(255, 255, 255, 0.25)");
-          tokenGrad.addColorStop(0.85, "rgba(15, 23, 42, 0.85)");
-          tokenGrad.addColorStop(1, "rgba(5, 5, 20, 0.95)");
-          ctx.fillStyle = tokenGrad;
-          ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-          ctx.shadowBlur = 8;
-          ctx.fill();
-
-          // Token golden/neon border
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-
-          // Glowing '?' Glyph
-          const qSize = Math.round(tokenR * 1.3);
-          ctx.font = `bold ${qSize}px system-ui, -apple-system, sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "#ffffff";
-          ctx.shadowColor = "rgba(255, 255, 255, 0.9)";
-          ctx.shadowBlur = 10;
-          ctx.fillText("?", tokenDist, 1);
-
-          // Outer perimeter mystery label
-          ctx.font = "bold 11px system-ui, sans-serif";
-          ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-          ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
-          ctx.shadowBlur = 3;
-          ctx.fillText(`MYSTERY #${i + 1}`, sliceRadius - 38, 0);
-        } else {
-          // ----------------------------------------
-          // REVEALED MODE: Clear, Readable Option Name
-          // ----------------------------------------
-          const rawText = currentOptions && currentOptions[i] ? currentOptions[i] : `Choice #${i + 1}`;
-          const isWinner = isWinnerSlice;
-
-          // Compute readable font size
-          const fontSize = totalSlices <= 4 ? 20 : totalSlices <= 7 ? 16 : 13;
-          ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
-
-          // Truncate cleanly if string is too long for wedge
-          const maxChars = totalSlices <= 4 ? 20 : 15;
-          const labelText = rawText.length > maxChars ? rawText.substring(0, maxChars - 1) + "…" : rawText;
-
-          // Draw contrasting pill background for readability
-          const textMetrics = ctx.measureText(labelText);
-          const pillW = Math.min(sliceRadius * 0.65, textMetrics.width + 26);
-          const pillH = fontSize + 16;
-          const pillX = sliceRadius * 0.58;
-
-          ctx.beginPath();
-          const r = pillH / 2;
-          ctx.roundRect(pillX - pillW / 2, -pillH / 2, pillW, pillH, r);
-
-          if (isWinner) {
-            ctx.fillStyle = "#ffffff";
-            ctx.shadowColor = "rgba(251, 191, 36, 0.9)";
-            ctx.shadowBlur = 15;
-            ctx.fill();
-            ctx.strokeStyle = "#fbbf24";
-            ctx.lineWidth = 2.5;
-            ctx.stroke();
-
-            // Winner text
-            ctx.fillStyle = "#1e1b4b";
-            ctx.shadowColor = "transparent";
-            ctx.shadowBlur = 0;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(`★ ${labelText}`, pillX, 0);
-          } else {
-            ctx.fillStyle = "rgba(10, 15, 35, 0.78)";
-            ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-            ctx.shadowBlur = 6;
-            ctx.fill();
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            // Regular option text
-            ctx.fillStyle = "#ffffff";
-            ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-            ctx.shadowBlur = 4;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(labelText, pillX, 0);
-          }
-        }
-
-        ctx.restore();
-      }
-
-      // Perimeter 3D Pegs (Silver rivets at each slice seam)
-      for (let i = 0; i < totalSlices; i++) {
-        const pegAngle = i * sliceAngle;
-        const px = Math.cos(pegAngle) * (sliceRadius - 3);
-        const py = Math.sin(pegAngle) * (sliceRadius - 3);
-
-        ctx.beginPath();
-        ctx.arc(px, py, 5, 0, Math.PI * 2);
-        ctx.fillStyle = "#cbd5e1";
-        ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-        ctx.shadowBlur = 4;
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(px - 1, py - 1, 2, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fill();
       }
 
       ctx.restore(); // Restore center translate & rotate
 
       // ==========================================
-      // 4. CENTER SPINDLE / METALLIC HUB
+      // 2. THICK WHITE WHEEL RIM (From Reference)
       // ==========================================
-      ctx.save();
-      // Outer hub bezel
       ctx.beginPath();
-      ctx.arc(center, center, 44, 0, Math.PI * 2);
-      const hubOuterGrad = ctx.createRadialGradient(center, center, 10, center, center, 44);
-      hubOuterGrad.addColorStop(0, "#334155");
-      hubOuterGrad.addColorStop(0.65, "#0f172a");
-      hubOuterGrad.addColorStop(1, "#020617");
-      ctx.fillStyle = hubOuterGrad;
-      ctx.shadowColor = "rgba(147, 51, 234, 0.65)";
-      ctx.shadowBlur = 18;
-      ctx.fill();
-
-      ctx.strokeStyle = "#a855f7";
-      ctx.lineWidth = 3;
+      ctx.arc(center, center, wheelRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 7;
       ctx.stroke();
 
-      // Inner jewel core
+      // ==========================================
+      // 3. CENTER HUB: DARK CIRCLE WITH WHITE '?'
+      // ==========================================
+      const hubRadius = Math.max(26, Math.min(36, wheelRadius * 0.22));
+
+      // Dark circle
       ctx.beginPath();
-      ctx.arc(center, center, 28, 0, Math.PI * 2);
-      const coreGrad = ctx.createRadialGradient(center, center, 2, center, center, 28);
-      coreGrad.addColorStop(0, "#d8b4fe");
-      coreGrad.addColorStop(0.5, "#9333ea");
-      coreGrad.addColorStop(1, "#581c87");
-      ctx.fillStyle = coreGrad;
-      ctx.shadowColor = "rgba(216, 180, 254, 0.8)";
-      ctx.shadowBlur = 10;
+      ctx.arc(center, center, hubRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#15182e";
       ctx.fill();
 
-      // Center sparkle glyph
-      ctx.font = "bold 20px system-ui";
+      // Clean white '?' glyph
+      ctx.font = `800 ${Math.round(hubRadius * 1.15)}px system-ui, -apple-system, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#ffffff";
-      ctx.fillText("✦", center, center + 1);
-      ctx.restore();
+      ctx.fillText("?", center, center + 1);
 
       // ==========================================
-      // 5. TOP POINTER NEEDLE (Physical Flapper)
+      // 4. TOP TEARDROP POINTER (From Reference)
       // ==========================================
-      drawPointer(ctx, center, center - sliceRadius + 2, pointerDeflectionRef.current);
+      drawPointer(ctx, center, center - wheelRadius + 2, pointerDeflectionRef.current);
     },
-    [totalSlices, sliceAngle, currentOptions, isRevealed, revealedWinner, isSpinning]
+    [totalSlices, sliceAngle]
   );
 
-  // Top Pointer Arrow Drawing
+  // Top Pointer: Yellow teardrop pin with black border & black dot (matches reference)
   const drawPointer = (
     ctx: CanvasRenderingContext2D,
     tipX: number,
@@ -386,46 +156,40 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
     ctx.translate(tipX, tipY);
     ctx.rotate(deflection);
 
-    // Pointer flapper blade pointing downwards into the wheel
+    // Teardrop pin pointing down
     ctx.beginPath();
-    ctx.moveTo(0, 24); // Sharp tip piercing wheel rim
-    ctx.lineTo(-15, -16);
-    ctx.lineTo(0, -10);
-    ctx.lineTo(15, -16);
+    ctx.moveTo(0, 14); // Tip pointing down into the wheel
+    ctx.lineTo(-12, -22);
+    ctx.arc(0, -22, 12, Math.PI, 0, false);
+    ctx.lineTo(0, 14);
     ctx.closePath();
 
-    const needleGrad = ctx.createLinearGradient(0, -16, 0, 24);
-    needleGrad.addColorStop(0, "#ef4444");
-    needleGrad.addColorStop(0.5, "#f43f5e");
-    needleGrad.addColorStop(1, "#ffffff");
-
-    ctx.fillStyle = needleGrad;
-    ctx.shadowColor = "rgba(244, 63, 94, 0.85)";
-    ctx.shadowBlur = 16;
+    // Solid flat yellow fill
+    ctx.fillStyle = "#ffcc00";
     ctx.fill();
 
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
+    // Bold black stroke
+    ctx.strokeStyle = "#111111";
+    ctx.lineWidth = 2.8;
+    ctx.lineJoin = "round";
     ctx.stroke();
 
-    // Pivot chrome pin
+    // Center black dot / eye inside pointer
     ctx.beginPath();
-    ctx.arc(0, -10, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#f8fafc";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    ctx.shadowBlur = 4;
+    ctx.arc(0, -20, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#111111";
     ctx.fill();
 
     ctx.restore();
   };
 
-  // Resize canvas for sharp Retina displays
+  // Resize canvas for sharp displays
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const displaySize = Math.min(window.innerWidth - 32, 440);
+    const displaySize = Math.min(window.innerWidth - 48, 380);
 
     canvas.width = displaySize * dpr;
     canvas.height = displaySize * dpr;
@@ -437,7 +201,6 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
       ctx.scale(dpr, dpr);
     }
 
-    // Set initial position: if already spun, align to winner
     if (isSpun && winnerIndex !== null && winnerIndex !== undefined) {
       const targetRotation = (3 * Math.PI) / 2 - (winnerIndex + 0.5) * sliceAngle;
       rotationRef.current = targetRotation;
@@ -448,7 +211,7 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
 
     const handleResize = () => {
       if (!canvas) return;
-      const newDisplaySize = Math.min(window.innerWidth - 32, 440);
+      const newDisplaySize = Math.min(window.innerWidth - 48, 380);
       canvas.width = newDisplaySize * dpr;
       canvas.height = newDisplaySize * dpr;
       canvas.style.width = `${newDisplaySize}px`;
@@ -481,7 +244,6 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
       const targetWinnerChoice = spinResult.winner_choice;
       const allRevealedOptions = spinResult.options;
 
-      // 6 full revolutions for maximum suspense
       const minRevolutions = 6;
       const baseRotation = rotationRef.current;
 
@@ -494,7 +256,7 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
       }
 
       const totalTargetRotation = baseRotation + minRevolutions * (2 * Math.PI) + angleDiff;
-      const duration = 5200;
+      const duration = 4800;
       const startTime = performance.now();
 
       const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4);
@@ -515,7 +277,7 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
         if (currentPeg !== lastPegCrossedRef.current) {
           lastPegCrossedRef.current = currentPeg;
           sounds.playTick(currentPeg);
-          pointerDeflectionRef.current = 0.32;
+          pointerDeflectionRef.current = 0.28;
         } else {
           pointerDeflectionRef.current *= 0.85;
         }
@@ -530,38 +292,21 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
           rotationRef.current = totalTargetRotation;
           setIsSpinning(false);
 
-          // Reveal options NOW after landing!
           setCurrentOptions(allRevealedOptions);
           setRevealedWinner({
             index: targetWinnerIndex,
             choice: targetWinnerChoice,
           });
 
-          // Celebration!
           sounds.playWinFanfare();
-          sounds.vibrate([100, 50, 150, 50, 200]);
+          sounds.vibrate([100, 50, 150]);
 
           confetti({
-            particleCount: 120,
-            spread: 90,
+            particleCount: 100,
+            spread: 80,
             origin: { y: 0.6 },
-            colors: ["#a855f7", "#ec4899", "#3b82f6", "#f59e0b", "#10b981"],
+            colors: ["#ffcc00", "#ff4785", "#00c49f", "#ffffff", "#ff6b18"],
           });
-
-          setTimeout(() => {
-            confetti({
-              particleCount: 70,
-              angle: 60,
-              spread: 60,
-              origin: { x: 0.1, y: 0.7 },
-            });
-            confetti({
-              particleCount: 70,
-              angle: 120,
-              spread: 60,
-              origin: { x: 0.9, y: 0.7 },
-            });
-          }, 250);
         }
       };
 
@@ -581,65 +326,24 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
   }, []);
 
   return (
-    <div className="wheel-wrapper" ref={containerRef}>
-      {/* Sound Mute Toggle */}
-      <div className="wheel-controls-bar">
-        <button
-          type="button"
-          onClick={toggleSound}
-          className="wheel-audio-toggle"
-          title={soundMuted ? "Unmute Sound" : "Mute Sound"}
-          aria-label={soundMuted ? "Unmute Sound" : "Mute Sound"}
-        >
-          {soundMuted ? "🔇" : "🔊"}
-        </button>
+    <div className="wheel-wrapper-clean" ref={containerRef}>
+      {/* Wheel Canvas Container */}
+      <div className="wheel-canvas-box">
+        <canvas ref={canvasRef} className="wheel-canvas-clean" />
       </div>
 
-      {/* Wheel Canvas Container with Neon Glow */}
-      <div className={`canvas-glow-container ${isSpinning ? "is-spinning" : ""}`}>
-        <canvas ref={canvasRef} className="wheel-canvas" />
-      </div>
-
-      {/* Action / Spin Button */}
-      <div className="wheel-action-section">
-        {!isSpun && !revealedWinner ? (
+      {/* Primary Action Button (Big Yellow 'Spin' button from reference) */}
+      {!isSpun && !revealedWinner && (
+        <div className="wheel-btn-container">
           <button
             type="button"
             onClick={handleSpinClick}
             disabled={isSpinning || disabled}
-            className={`btn-spin-primary ${isSpinning ? "btn-spinning" : ""}`}
-            aria-label="Spin the Mystery Wheel"
+            className="btn-spin-flat"
+            aria-label="Spin"
           >
-            {isSpinning ? (
-              <span className="flex-center gap-2">
-                <span className="spinner-dot" />
-                Deciding Fate...
-              </span>
-            ) : (
-              <span className="flex-center gap-2">
-                <span className="sparkle-icon">🔮</span>
-                SPIN THE WHEEL
-              </span>
-            )}
+            {isSpinning ? "Spinning..." : "Spin"}
           </button>
-        ) : (
-          <div className="locked-badge-pill">
-            <span className="lock-icon">🔒</span>
-            <span>Result Decided & Locked</span>
-          </div>
-        )}
-      </div>
-
-      {/* Winner Spotlight Card */}
-      {revealedWinner && (
-        <div className="winner-celebration-card animate-pop-in">
-          <div className="winner-tag">THE WHEEL HAS SPOKEN</div>
-          <div className="winner-choice-display">
-            ✨ {revealedWinner.choice} ✨
-          </div>
-          <p className="winner-subtext">
-            All mystery options have been revealed below!
-          </p>
         </div>
       )}
     </div>

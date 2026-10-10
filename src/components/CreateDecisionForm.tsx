@@ -2,27 +2,28 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FLAT_SLICE_COLORS } from "./MysteryWheel";
 
 const PRESETS = [
   {
     name: "🍽️ Dinner Decider",
-    title: "Where should we grab dinner tonight?",
-    options: ["Wood-fired Pizza", "Artisan Burgers", "Tokyo Sushi", "Street Tacos", "Thai Curry"],
+    title: "Where should we eat on Friday?",
+    options: ["Zebra Pizza", "Jollof Palace", "Suya Spot"],
   },
   {
     name: "🎬 Movie Night",
-    title: "What genre are we streaming tonight?",
-    options: ["Sci-Fi Thriller", "Feel-good Comedy", "Psychological Horror", "Action Blockbuster"],
+    title: "What movie genre tonight?",
+    options: ["Sci-Fi Thriller", "Comedy", "Horror", "Action"],
   },
   {
     name: "⚖️ Dilemma",
     title: "Should we go out or stay in?",
-    options: ["Go Out & Celebrate 🎉", "Stay In & Cozy Up ☕"],
+    options: ["Go Out & Celebrate", "Stay In & Cozy Up"],
   },
   {
-    name: "🎮 Game / Activity",
-    title: "What are we playing next?",
-    options: ["Board Games", "Video Games", "Card Game", "Trivia Night"],
+    name: "🎮 Activity",
+    title: "What are we doing next?",
+    options: ["Board Games", "Video Games", "Card Game", "Trivia"],
   },
 ];
 
@@ -30,11 +31,10 @@ export const CreateDecisionForm: React.FC = () => {
   const router = useRouter();
 
   const [title, setTitle] = useState("");
-  const [options, setOptions] = useState<string[]>(["", ""]);
+  const [options, setOptions] = useState<string[]>(["", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Handle option changes
   const handleOptionChange = (index: number, value: string) => {
     const updated = [...options];
     updated[index] = value;
@@ -42,27 +42,23 @@ export const CreateDecisionForm: React.FC = () => {
     if (error) setError(null);
   };
 
-  // Add an option input
   const handleAddOption = () => {
     if (options.length >= 12) return;
     setOptions([...options, ""]);
   };
 
-  // Remove option input
   const handleRemoveOption = (index: number) => {
     if (options.length <= 2) return;
     const updated = options.filter((_, i) => i !== index);
     setOptions(updated);
   };
 
-  // Apply a preset
   const applyPreset = (preset: (typeof PRESETS)[0]) => {
     setTitle(preset.title);
     setOptions([...preset.options]);
     setError(null);
   };
 
-  // Check for duplicate choices
   const filledOptions = options.map((o) => o.trim()).filter(Boolean);
   const hasDuplicates = new Set(filledOptions.map((o) => o.toLowerCase())).size < filledOptions.length;
 
@@ -87,7 +83,7 @@ export const CreateDecisionForm: React.FC = () => {
     }
 
     if (hasDuplicates) {
-      setError("Please ensure all choices are distinct (no duplicates).");
+      setError("Please ensure choices are unique (no duplicates).");
       return;
     }
 
@@ -107,7 +103,6 @@ export const CreateDecisionForm: React.FC = () => {
         throw new Error(data.error || "Failed to create decision.");
       }
 
-      // Save to creator's local history
       if (typeof window !== "undefined") {
         const historyKey = "decider_wheel_creator_history";
         const savedHistory = JSON.parse(localStorage.getItem(historyKey) || "[]");
@@ -120,12 +115,9 @@ export const CreateDecisionForm: React.FC = () => {
           spun: false,
         });
         localStorage.setItem(historyKey, JSON.stringify(savedHistory.slice(0, 30)));
-
-        // Also save current creator token for this decision ID
         localStorage.setItem(`decider_token_${data.id}`, data.creator_token);
       }
 
-      // Navigate to the created decision page with creator query param
       router.push(`/d/${data.id}?creator=true`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -134,17 +126,17 @@ export const CreateDecisionForm: React.FC = () => {
   };
 
   return (
-    <div className="card-glass-form">
-      {/* Quick Presets Bar */}
-      <div className="presets-container">
-        <span className="presets-label">⚡ Quick Presets:</span>
-        <div className="presets-chips">
+    <div className="share-white-card create-card">
+      {/* Presets Row */}
+      <div className="presets-row">
+        <span className="presets-tag">Quick Presets:</span>
+        <div className="presets-scroll">
           {PRESETS.map((p, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => applyPreset(p)}
-              className="preset-chip"
+              className="btn-preset-flat"
             >
               {p.name}
             </button>
@@ -152,61 +144,57 @@ export const CreateDecisionForm: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="decision-form">
+      <form onSubmit={handleSubmit} className="form-stack">
         {/* Title Input */}
-        <div className="form-group">
-          <label htmlFor="decision-title" className="form-label">
-            <span>Decision Title</span>
-            <span className="label-counter">{title.length}/120</span>
+        <div className="field-group">
+          <label htmlFor="create-title" className="field-label">
+            Question / Decision Title
           </label>
           <input
-            id="decision-title"
+            id="create-title"
             type="text"
-            placeholder="e.g. What should we do this Friday night?"
+            placeholder="e.g. Where should we eat on Friday?"
             value={title}
             maxLength={120}
             onChange={(e) => {
               setTitle(e.target.value);
               if (error) setError(null);
             }}
-            className="input-field input-title"
+            className="input-flat"
             required
             autoComplete="off"
           />
         </div>
 
         {/* Options List */}
-        <div className="form-group">
-          <div className="options-header">
-            <label className="form-label">
-              <span>Hidden Choices</span>
-              <span className="text-secondary text-sm">
-                (2 to 12 choices • Hidden from friends until they spin)
-              </span>
-            </label>
-            <span className="label-badge">{filledOptions.length}/12</span>
-          </div>
-
-          <div className="options-list">
+        <div className="field-group">
+          <label className="field-label">
+            Choices ({filledOptions.length}/12)
+          </label>
+          <div className="options-stack">
             {options.map((opt, index) => (
-              <div key={index} className="option-row">
-                <div className="option-index-badge">
-                  <span>#{index + 1}</span>
-                </div>
+              <div key={index} className="option-input-row">
+                <span
+                  className="choice-color-dot"
+                  style={{
+                    backgroundColor:
+                      FLAT_SLICE_COLORS[index % FLAT_SLICE_COLORS.length],
+                  }}
+                />
                 <input
                   type="text"
                   placeholder={`Choice #${index + 1}`}
                   value={opt}
                   maxLength={60}
                   onChange={(e) => handleOptionChange(index, e.target.value)}
-                  className="input-field input-option"
+                  className="input-flat flex-1"
                   autoComplete="off"
                 />
                 {options.length > 2 && (
                   <button
                     type="button"
                     onClick={() => handleRemoveOption(index)}
-                    className="btn-icon-remove"
+                    className="btn-remove-circle"
                     title="Remove choice"
                     aria-label={`Remove choice ${index + 1}`}
                   >
@@ -217,55 +205,36 @@ export const CreateDecisionForm: React.FC = () => {
             ))}
           </div>
 
-          {/* Add Option Button */}
           {options.length < 12 && (
             <button
               type="button"
               onClick={handleAddOption}
-              className="btn-add-option"
+              className="btn-add-choice-flat"
             >
-              <span className="plus-icon">＋</span>
-              <span>Add Another Choice ({options.length}/12)</span>
+              ＋ Add another choice
             </button>
           )}
         </div>
 
-        {/* Error Notice */}
-        {error && (
-          <div className="error-alert animate-shake" role="alert">
-            <span className="error-icon">⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
+        {error && <div className="alert-box-error">{error}</div>}
 
-        {/* Warning if duplicates found */}
         {hasDuplicates && (
-          <div className="warning-alert" role="alert">
-            <span>⚠️ Two or more choices are identical. Please make them unique.</span>
+          <div className="alert-box-warning">
+            Two or more choices are identical. Please make them unique.
           </div>
         )}
 
-        {/* Submit Button */}
+        {/* Big Yellow Create Button (No gradients) */}
         <button
           type="submit"
           disabled={loading || filledOptions.length < 2 || hasDuplicates}
-          className="btn-submit-glow"
+          className="btn-create-submit"
         >
-          {loading ? (
-            <span className="flex-center gap-2">
-              <span className="spinner-dot" />
-              Crafting Mystery Wheel...
-            </span>
-          ) : (
-            <span className="flex-center gap-2">
-              <span className="sparkle-icon">🔮</span>
-              <span>GENERATE MYSTERY WHEEL LINK</span>
-            </span>
-          )}
+          {loading ? "Creating Spin..." : "Create Mystery Spin"}
         </button>
 
-        <p className="privacy-hint">
-          🔒 <strong>Zero Spoiler Guarantee:</strong> Choices stay anonymous on the wheel. Your friend only sees mystery segments until they spin!
+        <p className="create-footer-hint">
+          🔒 Choices stay hidden until spun. Friends see anonymous slices!
         </p>
       </form>
     </div>
