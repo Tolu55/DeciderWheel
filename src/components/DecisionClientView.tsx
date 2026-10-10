@@ -248,17 +248,26 @@ export const DecisionClientView: React.FC<DecisionClientViewProps> = ({
         />
       </div>
 
-      {/* Revealed Options Breakdown Card */}
-      {decision.options && decision.options.length > 0 && (
+      {/* Mystery Guarantee Notice (BEFORE SPIN) */}
+      {!decision.spun && (
+        <div className="mystery-lock-info-card animate-fade-in">
+          <div className="flex-center gap-2 mb-1">
+            <span className="mystery-lock-icon">🔒</span>
+            <span className="font-bold text-white text-sm">Mystery Mode Active</span>
+          </div>
+          <p className="text-xs text-secondary text-center">
+            All {decision.optionCount} choices are locked on the server. Slices remain anonymous (?) until the wheel is spun!
+          </p>
+        </div>
+      )}
+
+      {/* Revealed Options Breakdown Card (ONLY AFTER SPIN) */}
+      {decision.spun && decision.options && decision.options.length > 0 && (
         <div className="revealed-options-card animate-fade-in">
           <div className="revealed-header">
-            <h2 className="revealed-title">
-              {decision.spun ? "Revealed Choices" : "Creator Options Preview"}
-            </h2>
+            <h2 className="revealed-title">Revealed Choices</h2>
             <span className="revealed-subtitle">
-              {decision.spun
-                ? "The curtain has been lifted! Here were all the options:"
-                : "Visible only to you as creator. Your friend sees mystery segments until they spin."}
+              The curtain has been lifted! Here were all the options:
             </span>
           </div>
 

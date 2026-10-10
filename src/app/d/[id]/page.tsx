@@ -60,7 +60,7 @@ export default async function DecisionPage({ params, searchParams }: PageProps) 
     optionCount: decision.options.length,
     created_at: decision.created_at,
     isCreator: isCreatorParam,
-    ...(decision.spun || isCreatorParam ? { options: decision.options } : {}),
+    ...(decision.spun ? { options: decision.options } : {}),
   };
 
   return (

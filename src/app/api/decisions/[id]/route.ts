@@ -50,7 +50,6 @@ export async function GET(
       optionCount: decision.options.length,
       created_at: decision.created_at,
       isCreator,
-      ...(isCreator ? { options: decision.options } : {}),
     };
 
     return NextResponse.json(clientData);
