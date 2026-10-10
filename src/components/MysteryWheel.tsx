@@ -67,7 +67,7 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
   const totalSlices = Math.max(2, currentOptions ? currentOptions.length : optionCount);
   const sliceAngle = (2 * Math.PI) / totalSlices;
 
-  // Draw wheel on canvas matching the reference design (Clean, Flat, No Gradients)
+  // Draw wheel on canvas matching the reference design (Clean, Flat, No Gradients, Unclipped)
   const drawWheel = useCallback(
     (rotation: number) => {
       const canvas = canvasRef.current;
@@ -77,7 +77,9 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
 
       const size = canvas.width;
       const center = size / 2;
-      const wheelRadius = center - 14;
+
+      // 44px padding around the wheel so the top pointer and 7px border NEVER get cropped
+      const wheelRadius = center - 44;
 
       ctx.clearRect(0, 0, size, size);
 
@@ -93,12 +95,13 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
         const endAngle = startAngle + sliceAngle;
         const color = FLAT_SLICE_COLORS[i % FLAT_SLICE_COLORS.length];
 
+        // Slice wedge
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.arc(0, 0, wheelRadius, startAngle, endAngle);
         ctx.closePath();
 
-        // Flat solid color fill (Strictly NO gradient!)
+        // Flat solid color fill (Strictly NO gradient)
         ctx.fillStyle = color;
         ctx.fill();
 
@@ -106,12 +109,44 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 3.5;
         ctx.stroke();
+
+        // ==========================================
+        // 2. ANONYMOUS PLACEHOLDER '?' ON EACH SECTION
+        // ==========================================
+        ctx.save();
+        ctx.rotate(startAngle + sliceAngle / 2);
+
+        const placeholderDist = wheelRadius * 0.63;
+        const isWinnerSlice = (isSpun || revealedWinner !== null) && revealedWinner?.index === i;
+
+        if (isWinnerSlice) {
+          // Winning slice displays a golden star badge
+          ctx.font = `800 ${totalSlices <= 4 ? 32 : 24}px system-ui, -apple-system, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#ffffff";
+          ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+          ctx.shadowBlur = 6;
+          ctx.fillText("★", placeholderDist, 0);
+        } else {
+          // Anonymous '?' placeholder on each section
+          const qFontSize = totalSlices <= 4 ? 30 : totalSlices <= 6 ? 24 : totalSlices <= 8 ? 20 : 16;
+          ctx.font = `800 ${qFontSize}px system-ui, -apple-system, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#ffffff";
+          ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
+          ctx.shadowBlur = 4;
+          ctx.fillText("?", placeholderDist, 0);
+        }
+
+        ctx.restore();
       }
 
       ctx.restore(); // Restore center translate & rotate
 
       // ==========================================
-      // 2. THICK WHITE WHEEL RIM (From Reference)
+      // 3. THICK WHITE WHEEL RIM (From Reference)
       // ==========================================
       ctx.beginPath();
       ctx.arc(center, center, wheelRadius, 0, Math.PI * 2);
@@ -120,7 +155,7 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
       ctx.stroke();
 
       // ==========================================
-      // 3. CENTER HUB: DARK CIRCLE WITH WHITE '?'
+      // 4. CENTER HUB: DARK CIRCLE WITH WHITE '?'
       // ==========================================
       const hubRadius = Math.max(26, Math.min(36, wheelRadius * 0.22));
 
@@ -138,11 +173,11 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
       ctx.fillText("?", center, center + 1);
 
       // ==========================================
-      // 4. TOP TEARDROP POINTER (From Reference)
+      // 5. TOP TEARDROP POINTER (From Reference)
       // ==========================================
       drawPointer(ctx, center, center - wheelRadius + 2, pointerDeflectionRef.current);
     },
-    [totalSlices, sliceAngle]
+    [totalSlices, sliceAngle, isSpun, revealedWinner]
   );
 
   // Top Pointer: Yellow teardrop pin with black border & black dot (matches reference)
@@ -156,7 +191,7 @@ export const MysteryWheel: React.FC<MysteryWheelProps> = ({
     ctx.translate(tipX, tipY);
     ctx.rotate(deflection);
 
-    // Teardrop pin pointing down
+    // Teardrop pin pointing down into the wheel
     ctx.beginPath();
     ctx.moveTo(0, 14); // Tip pointing down into the wheel
     ctx.lineTo(-12, -22);
