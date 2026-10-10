@@ -1,69 +1,167 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState, useEffect } from "react";
+import { CreateDecisionForm } from "@/components/CreateDecisionForm";
+import { CreatorHistoryModal } from "@/components/CreatorHistoryModal";
+import { SupabaseSetupModal } from "@/components/SupabaseSetupModal";
+
+export default function HomePage() {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [supabaseConfigured, setSupabaseConfigured] = useState(false);
+  const [historyCount, setHistoryCount] = useState(0);
+
+  useEffect(() => {
+    // Check config
+    fetch("/api/config")
+      .then((res) => res.json())
+      .then((data) => setSupabaseConfigured(Boolean(data.supabaseConfigured)))
+      .catch(() => {});
+
+    // Check saved count
+    if (typeof window !== "undefined") {
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("decider_wheel_creator_history") || "[]"
+        );
+        setHistoryCount(saved.length);
+      } catch {
+        setHistoryCount(0);
+      }
+    }
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <>
+      {/* Top Navigation Bar */}
+      <header className="site-header">
+        <div className="header-inner">
+          <div className="brand-logo">
+            <span className="brand-icon">🔮</span>
+            <span className="brand-name">
+              Decider<span className="brand-accent">Wheel</span>
+            </span>
+          </div>
+
+          <div className="header-actions">
+            <button
+              type="button"
+              onClick={() => setSetupOpen(true)}
+              className={`status-pill ${supabaseConfigured ? "status-pill-live" : "status-pill-fallback"}`}
+              title="Click to view Database Settings & SQL schema"
+            >
+              <span className="status-dot" />
+              <span>{supabaseConfigured ? "Supabase Live" : "Local Storage"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="btn-header-history"
+              title="View your created decisions"
+            >
+              <span>📜 History</span>
+              {historyCount > 0 && (
+                <span className="history-counter-pill">{historyCount}</span>
+              )}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="main-content">
+        {/* Hero Header */}
+        <section className="hero-section">
+          <div className="hero-badge animate-fade-in">
+            <span className="sparkle-emoji">✨</span>
+            <span>Zero-Spoiler Random Decider</span>
+          </div>
+
+          <h1 className="hero-title animate-fade-in">
+            Let the Wheel Decide. <br />
+            <span className="text-gradient-mystery">Keep the Mystery Intact.</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="hero-subtitle animate-fade-in">
+            Enter your choices and send the link to a friend. The wheel segments remain
+            anonymous <span className="mystery-highlight">(?)</span> until spun — then all options
+            reveal with the winning choice locked forever!
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+          <div className="feature-pills-row animate-fade-in">
+            <div className="feature-pill">
+              <span>🎭</span>
+              <span>Anonymous Slices</span>
+            </div>
+            <div className="feature-pill">
+              <span>🔒</span>
+              <span>One Spin Only</span>
+            </div>
+            <div className="feature-pill">
+              <span>👑</span>
+              <span>Live Creator Tracking</span>
+            </div>
+            <div className="feature-pill">
+              <span>💬</span>
+              <span>WhatsApp Ready</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Creator Form Section */}
+        <section className="creator-section">
+          <CreateDecisionForm />
+        </section>
+
+        {/* How It Works Showcase */}
+        <section className="how-it-works-section">
+          <h2 className="section-heading">How Decider Wheel Works</h2>
+
+          <div className="steps-grid">
+            <div className="step-card">
+              <div className="step-num-circle">1</div>
+              <h3 className="step-title">Craft Your Dilemma</h3>
+              <p className="step-desc">
+                Give your decision a title and add 2 to 12 hidden choices. Presets make it effortless.
+              </p>
+            </div>
+
+            <div className="step-card">
+              <div className="step-num-circle">2</div>
+              <h3 className="step-title">Send to WhatsApp</h3>
+              <p className="step-desc">
+                Share your unique link. The options are stored securely on the server and completely hidden from the wheel preview.
+              </p>
+            </div>
+
+            <div className="step-card">
+              <div className="step-num-circle">3</div>
+              <h3 className="step-title">Friend Spins & Reveals</h3>
+              <p className="step-desc">
+                Your friend taps Spin. The server picks the winner, the mystery slices morph open, and the result is locked permanently!
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
-    </div>
+
+      {/* Footer */}
+      <footer className="site-footer">
+        <p>© 2026 Decider Wheel • Mobile-First Anonymous Decider</p>
+      </footer>
+
+      {/* Modals */}
+      <CreatorHistoryModal
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+      />
+
+      <SupabaseSetupModal
+        isOpen={setupOpen}
+        onClose={() => setSetupOpen(false)}
+        isConfigured={supabaseConfigured}
+      />
+    </>
   );
 }
